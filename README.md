@@ -71,4 +71,4 @@ Use `goudev list` to find your device’s vendor and product IDs (first column).
 
 ## License
 
-TBD.
+MIT — see [LICENSE](LICENSE).
