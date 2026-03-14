@@ -1,0 +1,20 @@
+# Binary
+/goudev
+
+# Go
+/vendor/
+*.exe
+*.test
+*.out
+go.work
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
