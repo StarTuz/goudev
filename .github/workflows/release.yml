@@ -48,10 +48,11 @@ jobs:
           cp dist/goudev_linux_amd64*/goudev appimage-build/AppDir/usr/bin/
           cp packaging/appimage/AppRun appimage-build/AppDir/
           cp packaging/appimage/goudev.desktop appimage-build/AppDir/
+          cp packaging/appimage/goudev.png appimage-build/AppDir/
           chmod +x appimage-build/AppDir/AppRun
           mkdir -p appimage-build/AppDir/usr/share/applications
           cp packaging/appimage/goudev.desktop appimage-build/AppDir/usr/share/applications/
-          ./appimagetool.AppImage appimage-build/AppDir "appimage-build/goudev-${VERSION}-x86_64.AppImage"
+          ./appimagetool.AppImage --appimage-extract-and-run appimage-build/AppDir "appimage-build/goudev-${VERSION}-x86_64.AppImage"
 
       - name: Upload AppImage to Release
         uses: softprops/action-gh-release@v2

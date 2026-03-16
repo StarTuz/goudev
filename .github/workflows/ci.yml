@@ -39,6 +39,7 @@ jobs:
           cp goudev appimage-build/AppDir/usr/bin/
           cp packaging/appimage/AppRun appimage-build/AppDir/
           cp packaging/appimage/goudev.desktop appimage-build/AppDir/
+          cp packaging/appimage/goudev.png appimage-build/AppDir/
           chmod +x appimage-build/AppDir/AppRun
           mkdir -p appimage-build/AppDir/usr/share/applications
           cp packaging/appimage/goudev.desktop appimage-build/AppDir/usr/share/applications/
