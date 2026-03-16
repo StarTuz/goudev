@@ -29,7 +29,7 @@ package-appimage:
 	@cp -f goudev dist/appimage/AppDir/usr/bin/ 2>/dev/null || \
 	 cp -f dist/goudev_linux_amd64_v1/goudev dist/appimage/AppDir/usr/bin/ 2>/dev/null || \
 	 { echo "Binary not found in . or dist/. Run 'make build' first."; exit 1; }
-	@cp packaging/appimage/AppRun packaging/appimage/goudev.desktop dist/appimage/AppDir/
+	@cp packaging/appimage/AppRun packaging/appimage/goudev.desktop packaging/appimage/goudev.png dist/appimage/AppDir/
 	@chmod +x dist/appimage/AppDir/AppRun
 	@mkdir -p dist/appimage/AppDir/usr/share/applications
 	@cp packaging/appimage/goudev.desktop dist/appimage/AppDir/usr/share/applications/

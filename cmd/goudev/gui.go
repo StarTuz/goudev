@@ -182,13 +182,17 @@ func runGUI(cmd *cobra.Command, args []string) error {
 
 // runElevatedInstall uses pkexec to run "goudev install" for the given IDs.
 func runElevatedInstall(ids []udev.DeviceID) (string, error) {
-	exe, err := os.Executable()
-	if err != nil {
-		return "", fmt.Errorf("could not find executable: %w", err)
-	}
-	exe, err = filepath.Abs(exe)
-	if err != nil {
-		return "", err
+	exe := os.Getenv("APPIMAGE")
+	if exe == "" {
+		var err error
+		exe, err = os.Executable()
+		if err != nil {
+			return "", fmt.Errorf("could not find executable: %w", err)
+		}
+		exe, err = filepath.Abs(exe)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	pkArgs := []string{exe, "install"}

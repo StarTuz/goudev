@@ -1,0 +1,5 @@
+#!/bin/sh
+set -e
+SELF=$(readlink -f "$0")
+DIR=$(dirname "$SELF")
+exec "$DIR/usr/bin/goudev" "$@"

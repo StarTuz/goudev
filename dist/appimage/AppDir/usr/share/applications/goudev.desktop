@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=GoUdev
+Comment=Easy udev rules for joysticks and HID devices on Linux
+Exec=goudev gui
+Icon=goudev
+Categories=Settings;System;
+Terminal=false
