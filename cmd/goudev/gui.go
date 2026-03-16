@@ -50,44 +50,50 @@ func cmdGUI() *cobra.Command {
 func runGUI(cmd *cobra.Command, args []string) error {
 	a := app.New()
 	w := a.NewWindow("GoUdev — udev rules for joysticks & controllers")
-	w.Resize(fyne.NewSize(560, 420))
+	w.Resize(fyne.NewSize(640, 480))
 
 	status := widget.NewLabel("Select your joystick(s), throttle, or game controller. Then click Install rules.")
 	status.Wrapping = fyne.TextWrapWord
 
-	deviceList := container.NewVBox()
-	var checks []*widget.Check
 	var devices []usb.Device
+	var selected = make(map[string]bool)
 
-	refresh := func() {
-		list, err := usb.List()
-		if err != nil {
-			status.SetText("Error listing devices: " + err.Error())
-			return
-		}
-		if len(list) == 0 {
-			status.SetText("No USB devices found. Plug in a device and click Refresh.")
-			deviceList.Objects = nil
-			checks = nil
-			devices = nil
-			deviceList.Refresh()
-			return
-		}
-		checks = make([]*widget.Check, 0, len(list))
-		deviceList.Objects = nil
-		devices = list
-		for i := range devices {
-			d := &devices[i]
+	list := widget.NewList(
+		func() int {
+			return len(devices)
+		},
+		func() fyne.CanvasObject {
+			return widget.NewCheck("device", nil)
+		},
+		func(id widget.ListItemID, item fyne.CanvasObject) {
+			d := devices[id]
+			check := item.(*widget.Check)
 			label := fmt.Sprintf("%s:%s  —  %s", d.VendorID, d.ProductID, d.Product)
 			if d.Product == "" {
 				label = fmt.Sprintf("%s:%s", d.VendorID, d.ProductID)
 			}
-			c := widget.NewCheck(label, nil)
-			checks = append(checks, c)
-			deviceList.Add(c)
+			check.Text = label
+			check.Checked = selected[d.VendorID+":"+d.ProductID]
+			check.OnChanged = func(b bool) {
+				selected[d.VendorID+":"+d.ProductID] = b
+			}
+			check.Refresh()
+		},
+	)
+
+	refresh := func() {
+		l, err := usb.List()
+		if err != nil {
+			status.SetText("Error listing devices: " + err.Error())
+			return
 		}
-		status.SetText(fmt.Sprintf("Found %d device(s). Select the ones you want to use in games or X-Plane, then click Install rules.", len(devices)))
-		deviceList.Refresh()
+		devices = l
+		if len(devices) == 0 {
+			status.SetText("No USB devices found. Plug in a device and click Refresh.")
+		} else {
+			status.SetText(fmt.Sprintf("Found %d device(s). Select the ones you want to use in games or X-Plane, then click Install rules.", len(devices)))
+		}
+		list.Refresh()
 	}
 
 	var refreshBtn *widget.Button
@@ -98,22 +104,23 @@ func runGUI(cmd *cobra.Command, args []string) error {
 	})
 
 	installBtn = widget.NewButtonWithIcon("Install rules", theme.ComputerIcon(), func() {
-		if len(checks) == 0 || len(devices) == 0 {
+		if len(devices) == 0 {
 			dialog.ShowInformation("No devices", "Click Refresh to load devices, then select at least one.", w)
 			return
 		}
 		var ids []udev.DeviceID
 		var selectedNames []string
-		for i, c := range checks {
-			if c.Checked {
-				ids = append(ids, udev.DeviceID{Vendor: devices[i].VendorID, Product: devices[i].ProductID})
-				name := devices[i].Product
+		for _, d := range devices {
+			if selected[d.VendorID+":"+d.ProductID] {
+				ids = append(ids, udev.DeviceID{Vendor: d.VendorID, Product: d.ProductID})
+				name := d.Product
 				if name == "" {
-					name = devices[i].VendorID + ":" + devices[i].ProductID
+					name = d.VendorID + ":" + d.ProductID
 				}
 				selectedNames = append(selectedNames, name)
 			}
 		}
+
 		if len(ids) == 0 {
 			dialog.ShowInformation("Nothing selected", "Select at least one device (check the box next to it), then click Install rules.", w)
 			return
@@ -169,9 +176,7 @@ func runGUI(cmd *cobra.Command, args []string) error {
 		widget.NewSeparator(),
 		widget.NewLabel("Devices:"),
 	)
-	scroll := container.NewScroll(deviceList)
-	scroll.SetMinSize(fyne.NewSize(0, 240))
-	content := container.NewBorder(top, nil, nil, nil, scroll)
+	content := container.NewPadded(container.NewBorder(top, nil, nil, nil, list))
 	w.SetContent(content)
 	refresh()
 	w.ShowAndRun()

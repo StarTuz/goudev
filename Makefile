@@ -1,4 +1,4 @@
-VERSION := 0.2.1
+VERSION := 0.2.2
 
 # Build. GUI on Linux requires CGO (Fyne/OpenGL).
 .PHONY: build build-linux build-linux-static test lint clean package package-appimage
