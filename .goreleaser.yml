@@ -23,6 +23,7 @@ nfpms:
     vendor: GoUdev
     homepage: https://github.com/goudev/goudev
     license: MIT
+    maintainer: StarTuxia <startuxia@users.noreply.github.com>
     formats:
       - deb
       - rpm
@@ -33,11 +34,8 @@ nfpms:
 
 archives:
   - id: default
-    format: tar.gz
+    formats: [tar.gz]
     name_template: "{{ .ProjectName }}_{{ .Version }}_linux_{{ .Arch }}"
-    format_overrides:
-      - goos: linux
-        format: tar.gz
 
 release:
   # GitHub owner/name inferred from GITHUB_REPOSITORY when run in Actions
