@@ -166,9 +166,7 @@ func readTrim(path string) (string, error) {
 
 func normalizeHex(s string, width int) string {
 	s = strings.TrimSpace(strings.ToLower(s))
-	if strings.HasPrefix(s, "0x") {
-		s = s[2:]
-	}
+	s = strings.TrimPrefix(s, "0x")
 	for len(s) < width {
 		s = "0" + s
 	}
