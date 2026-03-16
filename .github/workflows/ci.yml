@@ -43,7 +43,7 @@ jobs:
           mkdir -p appimage-build/AppDir/usr/share/applications
           cp packaging/appimage/goudev.desktop appimage-build/AppDir/usr/share/applications/
           # Set a dummy version for the AppImage
-          ./appimagetool.AppImage appimage-build/AppDir "goudev-ci-x86_64.AppImage"
+          ./appimagetool.AppImage --appimage-extract-and-run appimage-build/AppDir "goudev-ci-x86_64.AppImage"
 
       - name: Upload AppImage Artifact
         uses: actions/upload-artifact@v4
