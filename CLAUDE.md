@@ -23,7 +23,7 @@ The codebase has three layers:
 **`cmd/goudev/`** — CLI entrypoint (cobra). Subcommands: `list`, `rules`, `install`, `gui`. When invoked with no arguments on Linux, defaults to `gui`. The GUI uses `pkexec` for privilege escalation when not already root; if root, it calls `udev.Install` directly.
 
 **`internal/udev/`** — Rule generation and installation.
-- `rules.go`: `Generate(ids, opts)` builds udev rule text; `ValidateRules(content)` checks it against a strict regex before writing. `Options` controls hidraw inclusion, joystick tagging (`ENV{ID_INPUT_JOYSTICK}="1"`), and permission mode (plugdev group vs. `0666`).
+- `rules.go`: `Generate(ids, opts)` builds udev rule text; `ValidateRules(content)` checks it against a strict regex before writing. `Options` controls hidraw inclusion, joystick tagging (`ENV{ID_INPUT_JOYSTICK}="1"`), and permission mode (`0666` default, or plugdev group for Debian-based distros).
 - `install.go`: `Install(rulesContent)` validates → checks for `udevadm` in PATH → tests write access → backs up existing file → writes → reloads udev. On reload failure, it removes the new file and restores the backup.
 - Rules are written to `/etc/udev/rules.d/85-goudev.rules`.
 

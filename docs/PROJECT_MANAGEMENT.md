@@ -200,14 +200,14 @@
 7. **Docs**  
    - README: “Why don’t my devices show in X-Plane”, troubleshooting table (replug, plugdev, udev failed).
 
-### Phase 3 — Packaging and Optional GUI
+### Phase 3 — Packaging and Optional GUI ✅
 
 8. **AppImage**  
-   - Build script and/or CI to produce `goudev-*.AppImage`.
+   - Build script and/or CI to produce `goudev-*.AppImage`. (Done)
 9. **.deb**  
-   - Package for Mint/Ubuntu (nfpm or goreleaser).
+   - Package for Mint/Ubuntu (nfpm or goreleaser). (Done)
 10. **Optional GUI**  
-    - Fyne or TUI wrapper around list → add → install flow for “easy to use” one-click experience.
+    - Fyne or TUI wrapper around list → add → install flow for “easy to use” one-click experience. (Done)
 
 ---
 
@@ -232,4 +232,4 @@
 
 ---
 
-*Document version: 1.1 — Research, assessment and analysis for GoUdev.*
+*Document version: 1.2 — Research, assessment and analysis for GoUdev.*

@@ -32,6 +32,7 @@
 ### FR6 — Optional GUI (Phase 3)
 - Show list of detected devices; user selects which to add.
 - One-click “Install rules” with clear success/error and “replug device” message.
+- [x] **Done.**
 
 ---
 
@@ -49,6 +50,7 @@
 ### NFR3 — Packaging
 - Provide **AppImage** for generic Linux (run without install).
 - Provide **.deb** for Debian/Ubuntu/Linux Mint.
+- [x] **Done.**
 
 ---
 

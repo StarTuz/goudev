@@ -118,7 +118,7 @@ func runGUI(cmd *cobra.Command, args []string) error {
 			dialog.ShowInformation("Nothing selected", "Select at least one device (check the box next to it), then click Install rules.", w)
 			return
 		}
-		opts := udev.Options{TagAsJoystick: true} // tag as joystick to help Proton/SDL (e.g. rudder pedals)
+		opts := udev.Options{TagAsJoystick: true, Permission: udev.Mode0666}
 		fileName := udev.RulesFileName(selectedNames, ids)
 		rules := udev.Generate(ids, opts)
 
@@ -156,9 +156,6 @@ func runGUI(cmd *cobra.Command, args []string) error {
 				}
 				msg = "Configured: " + strings.Join(selectedNames, ", ") + "\n\n"
 				msg += out + "\n\nUnplug and replug your device(s) for the new permissions to take effect."
-			}
-			if opts.Permission == udev.GroupPlugdev {
-				msg += "\n\nIf access is still denied, add your user to the plugdev group:\nsudo usermod -aG plugdev $USER"
 			}
 			status.SetText("Rules installed successfully.")
 			title := dialogTitleForDevices(selectedNames)

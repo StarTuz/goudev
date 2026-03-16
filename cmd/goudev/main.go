@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const Version = "0.2.0"
+const Version = "0.2.1"
 
 func main() {
 	root := &cobra.Command{
@@ -72,7 +72,7 @@ var (
 func sharedRuleFlags(c *cobra.Command) {
 	c.Flags().BoolVar(&flagHidraw, "hidraw", false, "Also add hidraw rules for raw HID access (Wine/Proton)")
 	c.Flags().BoolVar(&flagNoTagJoystick, "no-tag-joystick", false, "Do not set ID_INPUT_JOYSTICK (default: tag as joystick to help Proton/SDL detect pedals)")
-	c.Flags().StringVar(&flagMode, "mode", "plugdev", "Permission: plugdev (default) or 0666")
+	c.Flags().StringVar(&flagMode, "mode", "0666", "Permission: 0666 (default, works on all distros) or plugdev")
 }
 
 func parseVIDPID(s string) (vendor, product string, err error) {
@@ -126,9 +126,10 @@ func ruleOpts() udev.Options {
 	opts := udev.Options{
 		IncludeHidraw: flagHidraw,
 		TagAsJoystick: !flagNoTagJoystick,
+		Permission:    udev.Mode0666,
 	}
-	if flagMode == "0666" {
-		opts.Permission = udev.Mode0666
+	if flagMode == "plugdev" {
+		opts.Permission = udev.GroupPlugdev
 	}
 	return opts
 }

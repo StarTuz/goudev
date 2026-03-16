@@ -13,7 +13,7 @@ GoUdev helps you **discover devices**, **generate the right udev rules** (input,
 
 ## Status
 
-**Phase 2 complete:** Validation before install, udevadm check, restore-on-failure, and troubleshooting docs. See [docs/PROJECT_MANAGEMENT.md](docs/PROJECT_MANAGEMENT.md) for full research and roadmap.
+**Phase 3 complete:** Packaging (DEB, RPM, AppImage) and GUI are fully implemented and available in releases. See [docs/PROJECT_MANAGEMENT.md](docs/PROJECT_MANAGEMENT.md) for full research and roadmap.
 
 ## Usage
 
@@ -24,8 +24,8 @@ goudev list
 # Print udev rules for your device(s) without installing (copy-paste if you prefer manual install)
 goudev rules 06a3:0763 231d:0200
 
-# Optional: include hidraw rules, or use MODE="0666" instead of GROUP="plugdev"
-goudev rules 06a3:0763 --hidraw --mode=0666
+# Optional: include hidraw rules, or use GROUP="plugdev" instead of default MODE="0666"
+goudev rules 06a3:0763 --hidraw --mode=plugdev
 
 # Install rules (requires root), then unplug and replug your device(s)
 sudo goudev install 06a3:0763 231d:0200
@@ -45,7 +45,7 @@ Use `goudev list` to find your device’s vendor and product IDs (first column).
 |-------|------------|
 | **“cannot write to /etc/udev/rules.d”** | Install must run as root: `sudo goudev install VID:PID ...` |
 | **“udevadm not found in PATH”** | Install udev (or systemd). On Debian/Ubuntu/Mint: `udev` is part of the system; if you’re in a minimal chroot or container, install the `udev` package. |
-| **Device still not visible in X-Plane after install** | 1) Unplug and replug the device. 2) If you used the default `plugdev` mode, add your user to the group: `sudo usermod -aG plugdev $USER`, then log out and back in (or reboot). 3) Try `--mode=0666` so any user can access the device: `sudo goudev install --mode=0666 VID:PID`. |
+| **Device still not visible in X-Plane after install** | 1) Unplug and replug the device. 2) If you used `--mode=plugdev`, add your user to the group: `sudo usermod -aG plugdev $USER`, then log out and back in (or reboot). The default `--mode=0666` works on all distros without group membership. |
 | **“udev reload failed (rules were reverted)”** | udev couldn’t reload. Check `journalctl -u systemd-udevd` or run `sudo udevadm control --reload-rules` and `sudo udevadm trigger` manually to see the error. Your previous rules file was restored. |
 | **Wrong device or too many devices in list** | Use the **Vendor:Product** and **Product name** columns to pick the right one (e.g. “Bravo Throttle Quadrant”). Don’t add keyboards, mice, or hubs. |
 | **GUI: “install failed” or no password prompt** | Install PolicyKit: `sudo apt install policykit-1` (Debian/Ubuntu/Mint). Or run the app as root: `sudo goudev gui`, then click Install (no prompt). |
