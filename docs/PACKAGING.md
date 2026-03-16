@@ -6,14 +6,14 @@ Packaging is driven by [GoReleaser](https://goreleaser.com/) (DEB, RPM, archive)
 
 | Format    | Tool        | Output (example)                    |
 |-----------|-------------|-------------------------------------|
-| **DEB**   | GoReleaser (nfpm) | `goudev_1.0.0_amd64.deb`        |
-| **RPM**   | GoReleaser (nfpm) | `goudev_1.0.0_amd64.rpm`        |
-| **AppImage** | appimagetool (in CI) | `goudev-v1.0.0-x86_64.AppImage` |
-| **Archive** | GoReleaser | `goudev_1.0.0_linux_amd64.tar.gz`   |
+| **DEB**   | GoReleaser (nfpm) | `goudev_0.2.0_amd64.deb`        |
+| **RPM**   | GoReleaser (nfpm) | `goudev_0.2.0_amd64.rpm`        |
+| **AppImage** | appimagetool (in CI) | `goudev-v0.2.0-x86_64.AppImage` |
+| **Archive** | GoReleaser | `goudev_0.2.0_linux_amd64.tar.gz`   |
 
 ## CI Release (GitHub Actions)
 
-On push of a tag `v*` (e.g. `v1.0.0`):
+On push of a tag `v*` (e.g. `v0.2.0`):
 
 1. **GoReleaser** builds the Linux amd64 binary (with GUI, CGO enabled), then:
    - Produces **DEB** and **RPM** via nfpm (dependency: `udev`).
@@ -37,7 +37,7 @@ Requires [GoReleaser](https://goreleaser.com/install/) (e.g. `go install github.
 make package
 ```
 
-This runs `goreleaser release --clean --snapshot`. Outputs go to `dist/` (e.g. `dist/goudev_1.0.0-snapshot_amd64.deb`, `dist/goudev_1.0.0-snapshot_amd64.rpm`).
+This runs `goreleaser release --clean --snapshot`. Outputs go to `dist/` (e.g. `dist/goudev_0.2.0-snapshot_amd64.deb`, `dist/goudev_0.2.0-snapshot_amd64.rpm`).
 
 ### AppImage (local)
 
@@ -46,7 +46,7 @@ Requires **appimagetool** ([releases](https://github.com/AppImage/appimagetool/r
 Build the binary first, then:
 
 ```bash
-make package-appimage VERSION=v1.0.0
+make package-appimage VERSION=v0.2.0
 ```
 
 If you omit `VERSION`, it defaults to `snapshot`. The binary is taken from `./goudev` if present, otherwise from `dist/goudev_linux_amd64*/goudev` (after `make package`). Output: `dist/appimage/goudev-<VERSION>-x86_64.AppImage`.
@@ -67,7 +67,7 @@ If you omit `VERSION`, it defaults to `snapshot`. The binary is taken from `./go
 
 ### AppImage
 
-- Single-file executable; no system install. Run e.g. `./goudev-v1.0.0-x86_64.AppImage list` or `./goudev-v1.0.0-x86_64.AppImage gui`.
+- Single-file executable; no system install. Run e.g. `./goudev-v0.2.0-x86_64.AppImage list` or `./goudev-v0.2.0-x86_64.AppImage gui`.
 - Writing to `/etc/udev/rules.d/` still requires root: `sudo ./goudev-*.AppImage install ...` or use the GUI (pkexec/sudo when clicking Install).
 
 ## Adding an icon (optional)

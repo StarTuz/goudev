@@ -11,10 +11,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const Version = "0.2.0"
+
 func main() {
 	root := &cobra.Command{
-		Use:   "goudev",
-		Short: "Easy udev rules for joysticks and HID devices on Linux",
+		Use:     "goudev",
+		Short:   "Easy udev rules for joysticks and HID devices on Linux",
+		Version: Version,
 	}
 	root.AddCommand(cmdList(), cmdRules(), cmdInstall(), cmdGUI())
 	// Default to GUI on Linux when no subcommand (e.g. double-click or "goudev")

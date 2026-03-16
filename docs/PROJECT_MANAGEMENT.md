@@ -232,4 +232,4 @@
 
 ---
 
-*Document version: 1.0 — Research, assessment and analysis for GoUdev.*
+*Document version: 1.1 — Research, assessment and analysis for GoUdev.*
