@@ -60,12 +60,14 @@ func runList(cmd *cobra.Command, args []string) error {
 }
 
 var (
-	flagHidraw bool
-	flagMode   string
+	flagHidraw        bool
+	flagMode          string
+	flagNoTagJoystick bool
 )
 
 func sharedRuleFlags(c *cobra.Command) {
-	c.Flags().BoolVar(&flagHidraw, "hidraw", false, "Also add hidraw rules for raw HID access")
+	c.Flags().BoolVar(&flagHidraw, "hidraw", false, "Also add hidraw rules for raw HID access (Wine/Proton)")
+	c.Flags().BoolVar(&flagNoTagJoystick, "no-tag-joystick", false, "Do not set ID_INPUT_JOYSTICK (default: tag as joystick to help Proton/SDL detect pedals)")
 	c.Flags().StringVar(&flagMode, "mode", "plugdev", "Permission: plugdev (default) or 0666")
 }
 
@@ -117,7 +119,10 @@ func runRules(cmd *cobra.Command, args []string) error {
 }
 
 func ruleOpts() udev.Options {
-	opts := udev.Options{IncludeHidraw: flagHidraw}
+	opts := udev.Options{
+		IncludeHidraw: flagHidraw,
+		TagAsJoystick: !flagNoTagJoystick,
+	}
 	if flagMode == "0666" {
 		opts.Permission = udev.Mode0666
 	}

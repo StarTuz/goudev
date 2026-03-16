@@ -17,8 +17,9 @@ const (
 
 // Options configures rule generation.
 type Options struct {
-	IncludeHidraw bool
-	Permission   PermissionMode
+	IncludeHidraw   bool // add hidraw rules for raw HID (Wine/Proton)
+	TagAsJoystick   bool // set ENV{ID_INPUT_JOYSTICK}="1" so SDL/Proton treats device as joystick (helps rudder pedals)
+	Permission      PermissionMode
 }
 
 // DeviceID is vendor:product (lowercase, 4-char each).
@@ -59,10 +60,14 @@ func Generate(ids []DeviceID, opts Options) string {
 		perm = "MODE=\"0666\""
 	}
 
+	joystickTag := ""
+	if opts.TagAsJoystick {
+		joystickTag = ", ENV{ID_INPUT_JOYSTICK}=\"1\""
+	}
 	for _, id := range ids {
 		// Input (evdev) - required for X-Plane and most games
-		line := fmt.Sprintf("KERNEL==\"event*\", SUBSYSTEM==\"input\", ATTRS{idVendor}==\"%s\", ATTRS{idProduct}==\"%s\", %s\n",
-			id.Vendor, id.Product, perm)
+		line := fmt.Sprintf("KERNEL==\"event*\", SUBSYSTEM==\"input\", ATTRS{idVendor}==\"%s\", ATTRS{idProduct}==\"%s\", %s%s\n",
+			id.Vendor, id.Product, perm, joystickTag)
 		b.WriteString(line)
 		if opts.IncludeHidraw {
 			lineHid := fmt.Sprintf("KERNEL==\"hidraw*\", SUBSYSTEM==\"hidraw\", ATTRS{idVendor}==\"%s\", ATTRS{idProduct}==\"%s\", %s\n",
@@ -84,8 +89,8 @@ func FullPath() string {
 	return RulesDir + "/" + RulesFileName
 }
 
-// ruleLineRegex matches a line we generate: KERNEL=="...", SUBSYSTEM=="...", ATTRS{idVendor}=="...", ATTRS{idProduct}=="...", MODE/GROUP...
-var ruleLineRegex = regexp.MustCompile(`^KERNEL=="(event\*|hidraw\*)", SUBSYSTEM=="(input|hidraw)", ATTRS\{idVendor\}=="[0-9a-f]{4}", ATTRS\{idProduct\}=="[0-9a-f]{4}", (MODE="0666"|MODE="0660", GROUP="plugdev")$`)
+// ruleLineRegex matches a line we generate (with optional ENV{ID_INPUT_JOYSTICK}="1" at end).
+var ruleLineRegex = regexp.MustCompile(`^KERNEL=="(event\*|hidraw\*)", SUBSYSTEM=="(input|hidraw)", ATTRS\{idVendor\}=="[0-9a-f]{4}", ATTRS\{idProduct\}=="[0-9a-f]{4}", (MODE="0666"|MODE="0660", GROUP="plugdev")(, ENV\{ID_INPUT_JOYSTICK\}="1")?$`)
 
 // ValidateRules checks that the rule content is well-formed and safe to install.
 // Comment lines and empty lines are ignored.

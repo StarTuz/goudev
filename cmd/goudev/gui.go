@@ -3,12 +3,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/goudev/goudev/internal/udev"
 	"github.com/goudev/goudev/internal/usb"
@@ -88,11 +90,14 @@ func runGUI(cmd *cobra.Command, args []string) error {
 		deviceList.Refresh()
 	}
 
-	refreshBtn := widget.NewButtonWithIcon("Refresh", theme.ViewRefreshIcon(), func() {
+	var refreshBtn *widget.Button
+	var installBtn *widget.Button
+
+	refreshBtn = widget.NewButtonWithIcon("Refresh", theme.ViewRefreshIcon(), func() {
 		refresh()
 	})
 
-	installBtn := widget.NewButtonWithIcon("Install rules", theme.ComputerIcon(), func() {
+	installBtn = widget.NewButtonWithIcon("Install rules", theme.ComputerIcon(), func() {
 		if len(checks) == 0 || len(devices) == 0 {
 			dialog.ShowInformation("No devices", "Click Refresh to load devices, then select at least one.", w)
 			return
@@ -113,56 +118,51 @@ func runGUI(cmd *cobra.Command, args []string) error {
 			dialog.ShowInformation("Nothing selected", "Select at least one device (check the box next to it), then click Install rules.", w)
 			return
 		}
-		opts := udev.Options{} // default: plugdev, no hidraw
+		opts := udev.Options{TagAsJoystick: true} // tag as joystick to help Proton/SDL (e.g. rudder pedals)
 		rules := udev.Generate(ids, opts)
-		var msg string
-		if syscall.Geteuid() == 0 {
-			// Already root (e.g. sudo goudev gui): install directly
-			res := udev.Install(rules)
-			if res.Err != nil {
-				dialog.ShowError(res.Err, w)
-				return
-			}
-			if res.BackupPath != "" {
-				msg = "Backed up previous rules to: " + res.BackupPath + "\n\n"
-			}
-			msg += "Configured: " + strings.Join(selectedNames, ", ") + "\n\n"
-			msg += "Rules installed to " + udev.FullPath() + ".\n\nUnplug and replug your device(s) for the new permissions to take effect."
-		} else {
-			// Need elevation: run ourselves via pkexec
-			exe, err := os.Executable()
-			if err != nil {
-				dialog.ShowError(fmt.Errorf("could not find executable: %w", err), w)
-				return
-			}
-			exe, err = filepath.Abs(exe)
-			if err != nil {
-				dialog.ShowError(err, w)
-				return
-			}
-			args := []string{exe, "install"}
-			for _, id := range ids {
-				args = append(args, id.String())
-			}
-			cmd := exec.Command("pkexec", args...)
-			out, err := cmd.CombinedOutput()
-			if err != nil {
-				msg := string(out)
-				if msg == "" {
-					msg = err.Error()
+
+		installBtn.Disable()
+		refreshBtn.Disable()
+		status.SetText("Installing rules… (enter password if prompted)")
+
+		go func() {
+			defer func() {
+				installBtn.Enable()
+				refreshBtn.Enable()
+			}()
+
+			var msg string
+			if syscall.Geteuid() == 0 {
+				// Already root (e.g. sudo goudev gui): install directly
+				res := udev.Install(rules)
+				if res.Err != nil {
+					status.SetText("Install failed.")
+					dialog.ShowError(res.Err, w)
+					return
 				}
-				dialog.ShowError(fmt.Errorf("install failed: %s", msg), w)
-				return
+				if res.BackupPath != "" {
+					msg = "Backed up previous rules to: " + res.BackupPath + "\n\n"
+				}
+				msg += "Configured: " + strings.Join(selectedNames, ", ") + "\n\n"
+				msg += "Rules installed to " + udev.FullPath() + ".\n\nUnplug and replug your device(s) for the new permissions to take effect."
+			} else {
+				// Need elevation: run ourselves via pkexec
+				out, err := runElevatedInstall(ids)
+				if err != nil {
+					status.SetText("Install failed.")
+					dialog.ShowError(err, w)
+					return
+				}
+				msg = "Configured: " + strings.Join(selectedNames, ", ") + "\n\n"
+				msg += out + "\n\nUnplug and replug your device(s) for the new permissions to take effect."
 			}
-			msg = "Configured: " + strings.Join(selectedNames, ", ") + "\n\n"
-			msg += string(out) + "\n\nUnplug and replug your device(s) for the new permissions to take effect."
-		}
-		if opts.Permission == udev.GroupPlugdev {
-			msg += "\n\nIf access is still denied, add your user to the plugdev group:\nsudo usermod -aG plugdev $USER"
-		}
-		// Dialog title uses selected device name(s) so it's clear what was configured
-		title := dialogTitleForDevices(selectedNames)
-		dialog.ShowInformation(title, msg, w)
+			if opts.Permission == udev.GroupPlugdev {
+				msg += "\n\nIf access is still denied, add your user to the plugdev group:\nsudo usermod -aG plugdev $USER"
+			}
+			status.SetText("Rules installed successfully.")
+			title := dialogTitleForDevices(selectedNames)
+			dialog.ShowInformation(title, msg, w)
+		}()
 	})
 
 	top := container.NewVBox(
@@ -178,4 +178,35 @@ func runGUI(cmd *cobra.Command, args []string) error {
 	refresh()
 	w.ShowAndRun()
 	return nil
+}
+
+// runElevatedInstall uses pkexec to run "goudev install" for the given IDs.
+func runElevatedInstall(ids []udev.DeviceID) (string, error) {
+	exe, err := os.Executable()
+	if err != nil {
+		return "", fmt.Errorf("could not find executable: %w", err)
+	}
+	exe, err = filepath.Abs(exe)
+	if err != nil {
+		return "", err
+	}
+
+	pkArgs := []string{exe, "install"}
+	for _, id := range ids {
+		pkArgs = append(pkArgs, id.String())
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "pkexec", pkArgs...)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		errMsg := string(out)
+		if errMsg == "" {
+			errMsg = err.Error()
+		}
+		return "", fmt.Errorf("install failed: %s", errMsg)
+	}
+	return string(out), nil
 }

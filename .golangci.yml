@@ -1,0 +1,6 @@
+# Minimal config for a small Go app. Run: golangci-lint run
+run:
+  timeout: 3m
+  tests: true
+
+# Use default linters; no need to list each one.

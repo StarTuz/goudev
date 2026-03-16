@@ -1,0 +1,62 @@
+# CD: on version tag (v*), build DEB, RPM, AppImage and create GitHub Release.
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  GO_VERSION: "1.21"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: go.sum
+
+      - name: Run GoReleaser (DEB, RPM, archive)
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up AppImage build
+        run: |
+          mkdir -p appimage-build/AppDir/usr/bin
+          curl -sL -o appimagetool.AppImage \
+            'https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage'
+          chmod +x appimagetool.AppImage
+
+      - name: Build AppImage
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          cp dist/goudev_linux_amd64*/goudev appimage-build/AppDir/usr/bin/
+          cp packaging/appimage/AppRun appimage-build/AppDir/
+          cp packaging/appimage/goudev.desktop appimage-build/AppDir/
+          chmod +x appimage-build/AppDir/AppRun
+          mkdir -p appimage-build/AppDir/usr/share/applications
+          cp packaging/appimage/goudev.desktop appimage-build/AppDir/usr/share/applications/
+          ./appimagetool.AppImage appimage-build/AppDir "appimage-build/goudev-${VERSION}-x86_64.AppImage"
+
+      - name: Upload AppImage to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: appimage-build/goudev-${{ github.ref_name }}-x86_64.AppImage
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

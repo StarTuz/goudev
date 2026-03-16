@@ -1,6 +1,7 @@
 package udev
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -84,11 +85,13 @@ func copyFile(src, dst string) error {
 }
 
 func reloadUdev() error {
-	cmd := exec.Command("udevadm", "control", "--reload-rules")
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "udevadm", "control", "--reload-rules")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("udevadm control: %w: %s", err, string(out))
 	}
-	cmd2 := exec.Command("udevadm", "trigger")
+	cmd2 := exec.CommandContext(ctx, "udevadm", "trigger")
 	if out, err := cmd2.CombinedOutput(); err != nil {
 		return fmt.Errorf("udevadm trigger: %w: %s", err, string(out))
 	}

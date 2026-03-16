@@ -1,54 +1,79 @@
-# GoUdev — Packaging: AppImage and Installer
+# GoUdev — Packaging: DEB, RPM, AppImage
 
-## AppImage
+Packaging is driven by [GoReleaser](https://goreleaser.com/) (DEB, RPM, archive) and a custom AppImage step in CI. All three formats are produced on every version tag (`v*`).
 
-### Purpose
-Single-file executable that runs on most desktop Linux distros (Mint, Ubuntu, Fedora, etc.) without system-wide install.
+## Overview
 
-### Build options
-1. **Minimal:** Package the static Go binary only (no Fyne/GUI deps). User runs e.g. `./goudev-*.AppImage list|add|install`.
-2. **With GUI:** If Fyne is used, include Fyne runtime in AppDir and build AppImage per [Fyne packaging](https://docs.fyne.io/started/packaging.html).
+| Format    | Tool        | Output (example)                    |
+|-----------|-------------|-------------------------------------|
+| **DEB**   | GoReleaser (nfpm) | `goudev_1.0.0_amd64.deb`        |
+| **RPM**   | GoReleaser (nfpm) | `goudev_1.0.0_amd64.rpm`        |
+| **AppImage** | appimagetool (in CI) | `goudev-v1.0.0-x86_64.AppImage` |
+| **Archive** | GoReleaser | `goudev_1.0.0_linux_amd64.tar.gz`   |
 
-### Tools
-- [go-appimage](https://github.com/probonopd/go-appimage) (Go implementation of AppImage tooling).
-- Or: AppImageKit (appimagetool) + manual AppDir (binary + optional desktop file, icon).
+## CI Release (GitHub Actions)
 
-### Root requirement
-Writing to `/etc/udev/rules.d/` requires root. Options:
-- **CLI:** User runs `sudo ./goudev.AppImage install` or is prompted when choosing “install” from menu.
-- **GUI:** “Install rules” triggers pkexec/sudo for a helper that writes file and runs udevadm.
+On push of a tag `v*` (e.g. `v1.0.0`):
 
-### Build command (example, static binary)
+1. **GoReleaser** builds the Linux amd64 binary (with GUI, CGO enabled), then:
+   - Produces **DEB** and **RPM** via nfpm (dependency: `udev`).
+   - Produces a **tar.gz** archive.
+   - Creates the GitHub Release and uploads these artifacts.
+
+2. **AppImage** step:
+   - Uses the binary from `dist/goudev_linux_amd64*/goudev`.
+   - Creates an AppDir from `packaging/appimage/` (AppRun, desktop file, binary).
+   - Runs [appimagetool](https://github.com/AppImage/appimagetool) and uploads the AppImage to the same release.
+
+Workflow: [.github/workflows/release.yml](../.github/workflows/release.yml).
+
+## Local packaging
+
+### DEB and RPM (snapshot)
+
+Requires [GoReleaser](https://goreleaser.com/install/) (e.g. `go install github.com/goreleaser/goreleaser/v2@latest`).
+
 ```bash
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o goudev -ldflags="-s -w" ./cmd/goudev
-# Then use appimagetool or go-appimage to produce .AppImage
+make package
 ```
 
----
+This runs `goreleaser release --clean --snapshot`. Outputs go to `dist/` (e.g. `dist/goudev_1.0.0-snapshot_amd64.deb`, `dist/goudev_1.0.0-snapshot_amd64.rpm`).
 
-## .deb Installer (Linux Mint / Ubuntu / Debian)
+### AppImage (local)
 
-### Purpose
-Familiar “install once” experience; binary in PATH (e.g. `/usr/bin/goudev`).
+Requires **appimagetool** ([releases](https://github.com/AppImage/appimagetool/releases), e.g. continuous build).
 
-### Control file (minimal)
-- **Package:** goudev
-- **Depends:** udev
-- **Architecture:** amd64 (or arm64 as needed)
-- **Description:** Simple udev rule manager for joysticks and HID devices (e.g. X-Plane, games).
+Build the binary first, then:
 
-### Build options
-- **dpkg-deb:** Manual directory layout + `dpkg-deb -b goudev-deb goudev_1.0.0_amd64.deb`.
-- **nfpm:** YAML spec + `nfpm pkg` to produce .deb.
-- **goreleaser:** Cross-compile Go + nfpm section for .deb (and optionally AppImage).
+```bash
+make package-appimage VERSION=v1.0.0
+```
 
-### Postinst (optional)
-- Print one-time message: “Add your user to plugdev: `sudo usermod -aG plugdev $USER`” (or skip and document in README).
+If you omit `VERSION`, it defaults to `snapshot`. The binary is taken from `./goudev` if present, otherwise from `dist/goudev_linux_amd64*/goudev` (after `make package`). Output: `dist/appimage/goudev-<VERSION>-x86_64.AppImage`.
 
----
+## Config and AppDir
 
-## CI (recommended)
-- On tag/release: build Linux amd64/arm64 static binary, then:
-  - Run appimagetool to produce AppImage.
-  - Run nfpm/goreleaser to produce .deb.
-- Artifacts: `goudev-<ver>.AppImage`, `goudev_<ver>_amd64.deb`.
+- **GoReleaser:** [.goreleaser.yml](../.goreleaser.yml) — build (linux/amd64), nfpm (deb + rpm), archive.
+- **AppImage AppDir:** [packaging/appimage/](../packaging/appimage/) — `AppRun`, `goudev.desktop`. The binary is copied to `AppDir/usr/bin/goudev`.
+
+## Package details
+
+### DEB / RPM (nfpm)
+
+- **Package name:** goudev  
+- **Depends:** udev  
+- **Binary:** `/usr/bin/goudev`  
+- **Description:** Easy udev rules for joysticks and HID devices on Linux (X-Plane, flight sims, games).
+
+### AppImage
+
+- Single-file executable; no system install. Run e.g. `./goudev-v1.0.0-x86_64.AppImage list` or `./goudev-v1.0.0-x86_64.AppImage gui`.
+- Writing to `/etc/udev/rules.d/` still requires root: `sudo ./goudev-*.AppImage install ...` or use the GUI (pkexec/sudo when clicking Install).
+
+## Adding an icon (optional)
+
+To add an icon to the AppImage:
+
+1. Add e.g. `goudev.png` (e.g. 256×256) under `packaging/appimage/` or `AppDir/usr/share/icons/hicolor/256x256/apps/`.
+2. In the release workflow, copy the icon into the AppDir before calling appimagetool.
+3. The desktop file already references `Icon=goudev`.

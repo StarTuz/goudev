@@ -50,19 +50,30 @@ Use `goudev list` to find your device’s vendor and product IDs (first column).
 | **Wrong device or too many devices in list** | Use the **Vendor:Product** and **Product name** columns to pick the right one (e.g. “Bravo Throttle Quadrant”). Don’t add keyboards, mice, or hubs. |
 | **GUI: “install failed” or no password prompt** | Install PolicyKit: `sudo apt install policykit-1` (Debian/Ubuntu/Mint). Or run the app as root: `sudo goudev gui`, then click Install (no prompt). |
 
+## Proton / Wine and rudder pedals
+
+Rudder pedals (and other axis-only devices) are often **not detected** in games run through **Steam Proton** or Wine: SDL can misclassify them as accelerometers, and Steam’s environment may not see udev. By default we add **`ENV{ID_INPUT_JOYSTICK}="1"`** so the device is tagged as a joystick, which can help. For more causes and workarounds (Steam Input, hidraw, older Proton), see **[docs/RUDDER_PEDALS_PROTON_WINE.md](docs/RUDDER_PEDALS_PROTON_WINE.md)**.
+
+## CI/CD
+
+- **CI** (`.github/workflows/ci.yml`): on push/PR to `main` — runs tests and build, plus `golangci-lint`.
+- **Release** (`.github/workflows/release.yml`): on tag `v*` — builds Linux binary, **DEB**, **RPM**, and **AppImage**, then creates a GitHub Release with all assets.
+- **Developer/CI Locally**: `make test`, `make lint`, `make build`, `make package` (DEB/RPM snapshot), `make package-appimage` (AppImage).
+
 ## Docs
 
 | Document | Content |
 |----------|--------|
 | [docs/PROJECT_MANAGEMENT.md](docs/PROJECT_MANAGEMENT.md) | Research, user needs, risks, architecture, implementation plan |
 | [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) | Functional and non-functional requirements, architecture summary |
-| [docs/PACKAGING.md](docs/PACKAGING.md) | AppImage and .deb packaging |
+| [docs/PACKAGING.md](docs/PACKAGING.md) | DEB, RPM, and AppImage packaging |
+| [docs/RUDDER_PEDALS_PROTON_WINE.md](docs/RUDDER_PEDALS_PROTON_WINE.md) | Rudder pedals and Proton/Wine detection (research and workarounds) |
 
 ## Planned deliverables
 
 - **CLI:** `list`, `rules`, `install` (done).
 - **Robustness:** Backup before overwrite, rule validation before write, udevadm check, restore on reload failure (done).
-- **Packaging:** AppImage + .deb installer (Phase 3).
+- **Packaging:** DEB, RPM, and AppImage on tag (Phase 3).
 
 ## References
 

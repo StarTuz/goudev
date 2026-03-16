@@ -11,6 +11,12 @@ import (
 
 const sysfsUSB = "/sys/bus/usb/devices"
 
+// knownDeviceNames fallback when sysfs product/manufacturer are empty (e.g. some Bluetooth, TrackIR).
+var knownDeviceNames = map[string]string{
+	"8087:0aa7": "Intel Wireless-AC 3168 Bluetooth",
+	"131d:0159": "Natural Point TrackIR",
+}
+
 // Device represents a USB device with vendor/product IDs and optional product name.
 type Device struct {
 	VendorID   string // 4-char hex, e.g. "06a3"
@@ -29,12 +35,12 @@ func List() ([]Device, error) {
 	}
 
 	var devices []Device
-	seen := make(map[string]bool) // "vid:pid" to avoid duplicates from interfaces
 
 	for _, e := range entries {
 		name := e.Name()
-		// Skip root hub and pure interface nodes (we want the device node, e.g. "1-2" not "1-2:1.0")
-		if name == "usb1" || strings.Contains(name, ":") {
+		// Skip interface nodes (e.g. "1-2:1.0"); device nodes have no colon (e.g. "1-2").
+		// Root hubs (usb1, usb2, …) are filtered below by missing idVendor/idProduct.
+		if strings.Contains(name, ":") {
 			continue
 		}
 		devPath := filepath.Join(sysfsUSB, name)
@@ -46,12 +52,8 @@ func List() ([]Device, error) {
 		vendor = normalizeHex(vendor, 4)
 		product = normalizeHex(product, 4)
 		key := vendor + ":" + product
-		if seen[key] {
-			continue
-		}
-		seen[key] = true
 
-		productName, _ := readTrim(filepath.Join(devPath, "product"))
+		productName := deviceDisplayName(devPath, key)
 		eventPath, hidrawPath := findInputAndHidraw(devPath, name)
 
 		devices = append(devices, Device{
@@ -74,54 +76,84 @@ func findInputAndHidraw(devPath, devName string) (eventPath, hidrawPath string) 
 	if err != nil {
 		return "", ""
 	}
+
 	for _, d := range dirs {
 		if !strings.HasPrefix(d.Name(), devName) || !strings.Contains(d.Name(), ":") {
 			continue
 		}
 		ifPath := filepath.Join(devPath, d.Name())
-		// input/inputN/events/eventM or input/inputN/eventM
-		inputDir := filepath.Join(ifPath, "input")
-		inputEntries, err := os.ReadDir(inputDir)
-		if err != nil {
-			continue
+
+		if eventPath == "" {
+			eventPath = findEventNode(ifPath)
 		}
-		for _, ie := range inputEntries {
-			if !strings.HasPrefix(ie.Name(), "input") {
-				continue
-			}
-			inputBase := filepath.Join(inputDir, ie.Name())
-			for _, sub := range []string{"event", "events"} {
-				events, _ := os.ReadDir(filepath.Join(inputBase, sub))
-				if len(events) > 0 {
-					eventName := events[0].Name()
-					if strings.HasPrefix(eventName, "event") {
-						eventPath = filepath.Join("/dev/input", eventName)
-						break
-					}
-				}
-			}
-			if eventPath != "" {
-				break
-			}
+		if hidrawPath == "" {
+			hidrawPath = findHidrawNode(ifPath)
 		}
-		if eventPath != "" {
+
+		if eventPath != "" && hidrawPath != "" {
 			break
 		}
 	}
-	// hidraw: under interface we have hidraw/hidrawN
-	for _, d := range dirs {
-		if !strings.HasPrefix(d.Name(), devName) || !strings.Contains(d.Name(), ":") {
-			continue
-		}
-		hidrawDir := filepath.Join(devPath, d.Name(), "hidraw")
-		hr, err := os.ReadDir(hidrawDir)
-		if err != nil || len(hr) == 0 {
-			continue
-		}
-		hidrawPath = filepath.Join("/dev", hr[0].Name())
-		break
-	}
 	return eventPath, hidrawPath
+}
+
+// findEventNode looks for input/event* or input/inputN/event* under an interface path.
+func findEventNode(ifPath string) string {
+	inputDir := filepath.Join(ifPath, "input")
+	inputEntries, err := os.ReadDir(inputDir)
+	if err != nil {
+		return ""
+	}
+
+	for _, ie := range inputEntries {
+		if !strings.HasPrefix(ie.Name(), "input") {
+			continue
+		}
+		inputBase := filepath.Join(inputDir, ie.Name())
+		// Search both directly in inputN/ and in inputN/event/
+		for _, sub := range []string{"event", "events", ""} {
+			path := inputBase
+			if sub != "" {
+				path = filepath.Join(inputBase, sub)
+			}
+			events, _ := os.ReadDir(path)
+			for _, ev := range events {
+				if strings.HasPrefix(ev.Name(), "event") {
+					return filepath.Join("/dev/input", ev.Name())
+				}
+			}
+		}
+	}
+	return ""
+}
+
+// findHidrawNode looks for hidraw/hidrawN under an interface path.
+func findHidrawNode(ifPath string) string {
+	hidrawDir := filepath.Join(ifPath, "hidraw")
+	hr, err := os.ReadDir(hidrawDir)
+	if err != nil || len(hr) == 0 {
+		return ""
+	}
+	return filepath.Join("/dev", hr[0].Name())
+}
+
+// deviceDisplayName returns product name from sysfs, with manufacturer fallback and known-device table.
+func deviceDisplayName(devPath, vidPidKey string) string {
+	product, _ := readTrim(filepath.Join(devPath, "product"))
+	manufacturer, _ := readTrim(filepath.Join(devPath, "manufacturer"))
+	if product != "" && manufacturer != "" {
+		return strings.TrimSpace(manufacturer + " " + product)
+	}
+	if product != "" {
+		return product
+	}
+	if manufacturer != "" {
+		return manufacturer
+	}
+	if name := knownDeviceNames[vidPidKey]; name != "" {
+		return name
+	}
+	return ""
 }
 
 func readTrim(path string) (string, error) {

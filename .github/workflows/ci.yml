@@ -1,0 +1,44 @@
+# CI: test and build on push/PR. Sized for a small Go desktop app.
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+          cache-dependency-path: go.sum
+
+      - name: Run tests
+        run: go test -v ./...
+
+      - name: Build (CLI + GUI, Linux)
+        run: go build -o goudev ./cmd/goudev
+        # GUI requires CGO; runner has deps. Optional: CGO_ENABLED=0 build for CLI-only.
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+          cache-dependency-path: go.sum
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v4
+        with:
+          version: latest
+          args: --timeout=3m

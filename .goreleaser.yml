@@ -1,0 +1,43 @@
+# GoUdev — GoReleaser config for Linux packages (DEB, RPM) and release assets.
+# Run: goreleaser release --clean (with GITHUB_TOKEN for GitHub releases).
+# Snapshot: goreleaser release --clean --snapshot
+
+version: 2
+
+project_name: goudev
+
+builds:
+  - id: goudev
+    main: ./cmd/goudev
+    binary: goudev
+    goos: [linux]
+    goarch: [amd64]
+    ldflags:
+      - -s -w
+    # CGO left enabled so Fyne/GUI is built on Linux (runner has deps)
+
+nfpms:
+  - id: default
+    package_name: goudev
+    description: Easy udev rules for joysticks and HID devices on Linux (X-Plane, flight sims, games).
+    vendor: GoUdev
+    homepage: https://github.com/goudev/goudev
+    license: MIT
+    formats:
+      - deb
+      - rpm
+    dependencies:
+      - udev
+    bindir: /usr/bin
+    file_name_template: "{{ .PackageName }}_{{ .Version }}_{{ .Arch }}"
+
+archives:
+  - id: default
+    format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_linux_{{ .Arch }}"
+    format_overrides:
+      - goos: linux
+        format: tar.gz
+
+release:
+  # GitHub owner/name inferred from GITHUB_REPOSITORY when run in Actions
