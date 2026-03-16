@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strings"
 
 	"github.com/goudev/goudev/internal/udev"
 	"github.com/goudev/goudev/internal/usb"
@@ -153,18 +154,40 @@ func runInstall(cmd *cobra.Command, args []string) error {
 		}
 		ids = append(ids, udev.DeviceID{Vendor: v, Product: p})
 	}
+	fileName := udev.RulesFileName(resolveDeviceNames(ids), ids)
 	rules := udev.Generate(ids, opts)
-	res := udev.Install(rules)
+	res := udev.Install(fileName, rules)
 	if res.Err != nil {
 		return res.Err
 	}
 	if res.BackupPath != "" {
 		fmt.Println("Backed up existing rules to:", res.BackupPath)
 	}
-	fmt.Println("Rules installed to", udev.FullPath())
+	fmt.Println("Rules installed to", res.RulePath)
 	fmt.Println("Udev reloaded. Unplug and replug your device(s) for the new permissions to take effect.")
 	if opts.Permission == udev.GroupPlugdev {
 		fmt.Println("If access is still denied, add your user to the plugdev group: sudo usermod -aG plugdev $USER")
 	}
 	return nil
+}
+
+func resolveDeviceNames(ids []udev.DeviceID) []string {
+	devices, err := usb.List()
+	if err != nil {
+		return nil
+	}
+	names := make([]string, 0, len(ids))
+	for _, id := range ids {
+		name := ""
+		for _, device := range devices {
+			if device.VendorID == id.Vendor && device.ProductID == id.Product {
+				name = strings.TrimSpace(device.Product)
+				if name != "" {
+					break
+				}
+			}
+		}
+		names = append(names, name)
+	}
+	return names
 }

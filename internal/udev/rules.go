@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode"
 )
 
 // PermissionMode is either GroupPlugdev or Mode0666.
@@ -17,9 +18,9 @@ const (
 
 // Options configures rule generation.
 type Options struct {
-	IncludeHidraw   bool // add hidraw rules for raw HID (Wine/Proton)
-	TagAsJoystick   bool // set ENV{ID_INPUT_JOYSTICK}="1" so SDL/Proton treats device as joystick (helps rudder pedals)
-	Permission      PermissionMode
+	IncludeHidraw bool // add hidraw rules for raw HID (Wine/Proton)
+	TagAsJoystick bool // set ENV{ID_INPUT_JOYSTICK}="1" so SDL/Proton treats device as joystick (helps rudder pedals)
+	Permission    PermissionMode
 }
 
 // DeviceID is vendor:product (lowercase, 4-char each).
@@ -78,15 +79,86 @@ func Generate(ids []DeviceID, opts Options) string {
 	return strings.TrimSuffix(b.String(), "\n")
 }
 
-// RulesFileName is the udev rules file we manage.
-const RulesFileName = "85-goudev.rules"
+const rulesFilePrefix = "85-"
+const rulesFileSuffix = ".rules"
 
 // RulesDir is the standard udev rules directory.
 const RulesDir = "/etc/udev/rules.d"
 
-// FullPath returns the path to our rules file.
-func FullPath() string {
-	return RulesDir + "/" + RulesFileName
+// RulesFileName returns a readable per-device udev rules filename.
+func RulesFileName(names []string, ids []DeviceID) string {
+	slug := slugFromNames(names)
+	if slug == "" {
+		slug = slugFromIDs(ids)
+	}
+	if slug == "" {
+		slug = "device"
+	}
+	return rulesFilePrefix + slug + rulesFileSuffix
+}
+
+// FullPath returns the path to the provided rules file.
+func FullPath(fileName string) string {
+	return RulesDir + "/" + fileName
+}
+
+func slugFromNames(names []string) string {
+	var slugs []string
+	for _, name := range names {
+		slug := slugify(name)
+		if slug == "" {
+			continue
+		}
+		if len(slugs) > 0 && slug == slugs[len(slugs)-1] {
+			continue
+		}
+		slugs = append(slugs, slug)
+		if len(slugs) == 2 {
+			break
+		}
+	}
+	switch len(slugs) {
+	case 0:
+		return ""
+	case 1:
+		return slugs[0]
+	default:
+		return slugs[0] + "-plus-" + fmt.Sprintf("%d", len(names)-1)
+	}
+}
+
+func slugFromIDs(ids []DeviceID) string {
+	if len(ids) == 0 {
+		return ""
+	}
+	if len(ids) == 1 {
+		return "device-" + ids[0].Vendor + "-" + ids[0].Product
+	}
+	return "devices-" + ids[0].Vendor + "-" + ids[0].Product + "-plus-" + fmt.Sprintf("%d", len(ids)-1)
+}
+
+func slugify(s string) string {
+	s = strings.ToLower(strings.TrimSpace(s))
+	if s == "" {
+		return ""
+	}
+	var b strings.Builder
+	lastDash := false
+	for _, r := range s {
+		switch {
+		case unicode.IsLetter(r) || unicode.IsDigit(r):
+			b.WriteRune(r)
+			lastDash = false
+		case !lastDash:
+			b.WriteByte('-')
+			lastDash = true
+		}
+	}
+	slug := strings.Trim(b.String(), "-")
+	if len(slug) > 40 {
+		slug = strings.Trim(slug[:40], "-")
+	}
+	return slug
 }
 
 // ruleLineRegex matches a line we generate (with optional ENV{ID_INPUT_JOYSTICK}="1" at end).

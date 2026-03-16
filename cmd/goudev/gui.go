@@ -12,15 +12,15 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/goudev/goudev/internal/udev"
-	"github.com/goudev/goudev/internal/usb"
-	"github.com/spf13/cobra"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	"github.com/goudev/goudev/internal/udev"
+	"github.com/goudev/goudev/internal/usb"
+	"github.com/spf13/cobra"
 )
 
 // dialogTitleForDevices returns a short dialog title using the selected device name(s).
@@ -119,6 +119,7 @@ func runGUI(cmd *cobra.Command, args []string) error {
 			return
 		}
 		opts := udev.Options{TagAsJoystick: true} // tag as joystick to help Proton/SDL (e.g. rudder pedals)
+		fileName := udev.RulesFileName(selectedNames, ids)
 		rules := udev.Generate(ids, opts)
 
 		installBtn.Disable()
@@ -134,7 +135,7 @@ func runGUI(cmd *cobra.Command, args []string) error {
 			var msg string
 			if syscall.Geteuid() == 0 {
 				// Already root (e.g. sudo goudev gui): install directly
-				res := udev.Install(rules)
+				res := udev.Install(fileName, rules)
 				if res.Err != nil {
 					status.SetText("Install failed.")
 					dialog.ShowError(res.Err, w)
@@ -144,7 +145,7 @@ func runGUI(cmd *cobra.Command, args []string) error {
 					msg = "Backed up previous rules to: " + res.BackupPath + "\n\n"
 				}
 				msg += "Configured: " + strings.Join(selectedNames, ", ") + "\n\n"
-				msg += "Rules installed to " + udev.FullPath() + ".\n\nUnplug and replug your device(s) for the new permissions to take effect."
+				msg += "Rules installed to " + res.RulePath + ".\n\nUnplug and replug your device(s) for the new permissions to take effect."
 			} else {
 				// Need elevation: run ourselves via pkexec
 				out, err := runElevatedInstall(ids)

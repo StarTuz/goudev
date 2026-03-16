@@ -11,16 +11,17 @@ import (
 
 // InstallResult is the result of an install attempt.
 type InstallResult struct {
-	Installed bool   // true if file was written and udev reloaded
+	Installed  bool   // true if file was written and udev reloaded
+	RulePath   string // installed rule file path
 	BackupPath string // if backup was made
-	Err      error
+	Err        error
 }
 
 // Install writes rules to /etc/udev/rules.d/, backs up existing file, and runs udevadm.
 // If udev reload fails, the new file is removed and backup is restored.
-func Install(rulesContent string) InstallResult {
+func Install(fileName, rulesContent string) InstallResult {
 	dir := RulesDir
-	fullPath := filepath.Join(dir, RulesFileName)
+	fullPath := filepath.Join(dir, fileName)
 
 	if err := ValidateRules(rulesContent); err != nil {
 		return InstallResult{Err: fmt.Errorf("validation failed: %w", err)}
@@ -71,8 +72,9 @@ func Install(rulesContent string) InstallResult {
 	}
 
 	return InstallResult{
-		Installed:   true,
-		BackupPath:  backupPath,
+		Installed:  true,
+		RulePath:   fullPath,
+		BackupPath: backupPath,
 	}
 }
 

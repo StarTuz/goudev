@@ -24,3 +24,19 @@ func TestValidateRules(t *testing.T) {
 		t.Error("expected invalid rule to fail validation")
 	}
 }
+
+func TestRulesFileNameUsesDeviceName(t *testing.T) {
+	got := RulesFileName([]string{"Thrustmaster TA320 Pilot"}, []DeviceID{{Vendor: "044f", Product: "0405"}})
+	want := "85-thrustmaster-ta320-pilot.rules"
+	if got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}
+
+func TestRulesFileNameFallsBackToVIDPID(t *testing.T) {
+	got := RulesFileName(nil, []DeviceID{{Vendor: "131d", Product: "0159"}})
+	want := "85-device-131d-0159.rules"
+	if got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}
