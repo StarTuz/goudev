@@ -19,12 +19,37 @@ jobs:
           go-version: "1.21"
           cache-dependency-path: go.sum
 
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1-mesa-dev xorg-dev libwayland-dev libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libxxf86vm-dev
+
       - name: Run tests
         run: go test -v ./...
 
-      - name: Build (CLI + GUI, Linux)
+      - name: Build binary
         run: go build -o goudev ./cmd/goudev
-        # GUI requires CGO; runner has deps. Optional: CGO_ENABLED=0 build for CLI-only.
+
+      - name: Build AppImage
+        run: |
+          mkdir -p appimage-build/AppDir/usr/bin
+          curl -sL -o appimagetool.AppImage \
+            'https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage'
+          chmod +x appimagetool.AppImage
+          cp goudev appimage-build/AppDir/usr/bin/
+          cp packaging/appimage/AppRun appimage-build/AppDir/
+          cp packaging/appimage/goudev.desktop appimage-build/AppDir/
+          chmod +x appimage-build/AppDir/AppRun
+          mkdir -p appimage-build/AppDir/usr/share/applications
+          cp packaging/appimage/goudev.desktop appimage-build/AppDir/usr/share/applications/
+          # Set a dummy version for the AppImage
+          ./appimagetool.AppImage appimage-build/AppDir "goudev-ci-x86_64.AppImage"
+
+      - name: Upload AppImage Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: goudev-appimage
+          path: goudev-ci-x86_64.AppImage
 
   lint:
     runs-on: ubuntu-latest
